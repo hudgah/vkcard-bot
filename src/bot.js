@@ -6,7 +6,7 @@ const { generateCard } = require('./cardGenerator');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
-  console.error('❌  BOT_TOKEN is missing. Copy .env.example to .env and add your token.');
+  console.error('❌  BOT_TOKEN отсутствует. Скопируйте .env.example в .env и добавьте токен.');
   process.exit(1);
 }
 
@@ -15,12 +15,12 @@ const bot = new Telegraf(BOT_TOKEN);
 const cardWizard = new Scenes.WizardScene(
   'card-wizard',
   async (ctx) => {
-    await ctx.reply('Great! To issue your card, I just need a couple of details.\n\nWhat name should be on the card?');
+    await ctx.reply('Отлично! Для выпуска карты мне нужно несколько данных.\n\nКакое имя указать на карте?');
     return ctx.wizard.next();
   },
   async (ctx) => {
     ctx.wizard.state.name = ctx.message.text;
-    await ctx.reply('Got it! Now, what email address should we send the card details to?');
+    await ctx.reply('Принято! Теперь укажите ваш email-адрес.');
     return ctx.wizard.next();
   },
   async (ctx) => {
@@ -33,39 +33,40 @@ const cardWizard = new Scenes.WizardScene(
 const stage = new Scenes.Stage([cardWizard]);
 bot.use(session());
 bot.use(stage.middleware());
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatCard(card) {
   return (
     `╔══════════════════════╗\n` +
-    `  ${card.emoji} ${card.type} Virtual Card\n` +
+    `  ${card.emoji} Виртуальная карта ${escMd(card.type)}\n` +
     `╚══════════════════════╝\n\n` +
-    `💳 *Card Number*\n` +
+    `💳 *Номер карты*\n` +
     `\`${escMd(card.number)}\`\n\n` +
-    `📅 *Expires:* \`${escMd(card.expiry)}\`    🔒 *CVV:* \`${escMd(card.cvv)}\`\n\n` +
-    `👤 *Holder:* \`${escMd(card.holder)}\`\n\n` +
-    `💰 *Balance:* ${escMd(card.balance)}\n\n` +
-    ` *Email:* ${escMd(card.email)}\n\n` +
+    `📅 *Срок действия:* \`${escMd(card.expiry)}\`    🔒 *CVV:* \`${escMd(card.cvv)}\`\n\n` +
+    `👤 *Держатель:* \`${escMd(card.holder)}\`\n\n` +
+    `💰 *Баланс:* ${escMd(card.balance)}\n\n` +
+    `📧 *Email:* ${escMd(card.email)}\n\n` +
     `━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `🌍 *Works with:*\n` +
+    `🌍 *Работает с:*\n` +
     card.services.map(s => `  ${escMd(s)}`).join('\n') + '\n\n' +
-    `⚠️ _This is a demo card with no real funds or payments_`
+    `⚠️ _Это демо\\-карта без реальных средств и платежей_`
   );
 }
 
 const mainMenu = Markup.inlineKeyboard([
-  [Markup.button.callback('💳 Get Virtual Card', 'get_card')],
-  [Markup.button.callback('ℹ️ How it works',    'how_it_works')],
+  [Markup.button.callback('💳 Получить виртуальную карту', 'get_card')],
+  [Markup.button.callback('ℹ️ Как это работает', 'how_it_works')],
 ]);
 
 // ─── Commands ────────────────────────────────────────────────────────────────
 
 bot.start((ctx) => {
-  const name = ctx.from.first_name || 'there';
+  const name = ctx.from.first_name || 'друг';
   return ctx.replyWithMarkdownV2(
-    `👋 Hey *${escMd(name)}*\\! Welcome to *VirtualCard Bot*\\.\n\n` +
-    `Instant virtual cards for international payments — works on Amazon, Netflix, Booking, and 180\\+ more\\.\n\n` +
-    `🚀 Issue your card in *2 minutes*\\.`,
+    `👋 Привет, *${escMd(name)}*\\! Добро пожаловать в *VirtualCard Bot*\\.\n\n` +
+    `Моментальные виртуальные карты для международных платежей — работает на Amazon, Netflix, Booking и 180\\+ других сервисах\\.\n\n` +
+    `🚀 Выпустите карту за *2 минуты*\\.`,
     mainMenu
   );
 });
@@ -74,59 +75,58 @@ bot.command('getcard', async (ctx) => {
   ctx.scene.enter('card-wizard');
 });
 
-bot.command('help',    showHelp);
+bot.command('help', showHelp);
 
 // ─── Actions (button callbacks) ──────────────────────────────────────────────
 
 bot.action('get_card', async (ctx) => {
-  await ctx.answerCbQuery(escMd('Generating your card... ⏳'));
+  await ctx.answerCbQuery('Выпускаем карту... ⏳');
   try {
-      ctx.scene.enter('card-wizard');
+    ctx.scene.enter('card-wizard');
   } catch (err) {
-    console.error('issueCard error:', err.message);
+    console.error('Ошибка входа в сцену:', err.message);
   }
 });
+
 bot.action('how_it_works', async (ctx) => {
   await ctx.answerCbQuery();
   return ctx.replyWithMarkdownV2(
-    `*How it works:*\n\n` +
-    `1\\. Press *Get Virtual Card*\n` +
-    `2\\. Receive your card details instantly\n` +
-    `3\\. Use the card number, expiry, and CVV to pay online\n\n` +
-    `_Cards are virtual — no physical card is shipped\\._`,
-    Markup.inlineKeyboard([[Markup.button.callback('💳 Get My Card', 'get_card')]])
+    `*Как это работает:*\n\n` +
+    `1\\. Нажмите *Получить виртуальную карту*\n` +
+    `2\\. Мгновенно получите данные карты\n` +
+    `3\\. Используйте номер карты, срок действия и CVV для оплаты онлайн\n\n` +
+    `_Карты виртуальные — физическая карта не выпускается\\._`,
+    Markup.inlineKeyboard([[Markup.button.callback('💳 Получить мою карту', 'get_card')]])
   );
 });
 
 // ─── Core logic ──────────────────────────────────────────────────────────────
 
 async function issueCard(ctx, email, name) {
-  const loading = await ctx.reply('⏳ Issuing your virtual card...');
-  
-  // Simulate a short processing delay
+  const loading = await ctx.reply('⏳ Выпускаем вашу виртуальную карту...');
+
   await new Promise(r => setTimeout(r, 1200));
 
   const card = generateCard();
-  card.holder = name || ctx.from.first_name || 'John Doe';
-  card.email = email
+  card.holder = name || ctx.from.first_name || 'IVAN PETROV';
+  card.email = email || 'demo@example.com';
 
-  // Delete the loading message (best-effort)
   ctx.deleteMessage(loading.message_id).catch(() => {});
 
   return ctx.replyWithMarkdownV2(
     formatCard(card),
     Markup.inlineKeyboard([
-      [Markup.button.callback('🔄 New Card', 'get_card')],
+      [Markup.button.callback('🔄 Новая карта', 'get_card')],
     ])
   );
 }
 
 async function showHelp(ctx) {
   return ctx.replyWithMarkdownV2(
-    `*Available commands:*\n\n` +
-    `/start — Welcome screen\n` +
-    `/getcard — Issue a virtual card\n` +
-    `/help — Show this message`
+    `*Доступные команды:*\n\n` +
+    `/start — Главный экран\n` +
+    `/getcard — Выпустить виртуальную карту\n` +
+    `/help — Показать это сообщение`
   );
 }
 
@@ -137,8 +137,7 @@ function escMd(text) {
 
 // ─── Launch ──────────────────────────────────────────────────────────────────
 
-bot.launch(() => console.log('🤖 Bot is running...'));
+bot.launch(() => console.log('🤖 Бот запущен...'));
 
-// Graceful shutdown
 process.once('SIGINT',  () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

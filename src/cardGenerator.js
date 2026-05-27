@@ -6,11 +6,11 @@ const CARD_TYPES = [
 ];
 
 const SUPPORTED_SERVICES = [
-  '🛒 Amazon, eBay',
-  '🎬 Netflix, Spotify, Patreon',
-  '☁️  Dropbox, GitHub, Adobe',
-  '✈️  Booking, Airbnb, Agoda',
-  '🌍 180+ countries',
+  '🛒 Магазины: Amazon, eBay',
+  '🎬 Подписки: Netflix, Spotify, Patreon',
+  '☁️  Сервисы: Dropbox, GitHub, Adobe',
+  '✈️  Путешествия: Booking, Airbnb, Agoda',
+  '🌍 Покупки в 180+ странах',
 ];
 
 /**
