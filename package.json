@@ -1,0 +1,14 @@
+{
+  "name": "virtual-card-bot",
+  "version": "1.0.0",
+  "description": "Telegram virtual card bot (PoC)",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node --watch src/bot.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "telegraf": "^4.16.3"
+  }
+}
