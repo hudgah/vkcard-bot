@@ -1,0 +1,261 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #1a1a2e;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+  color: #fff;
+}
+
+/* ── Layout ────────────────────────────────────────────── */
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.page h1 {
+  font-size: 1.2rem;
+  color: #a0aec0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 60px;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
+  gap: 16px;
+}
+
+.header-logo {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.header-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: #a0aec0;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav-btn:hover,
+.nav-btn.active {
+  background: #0f3460;
+  color: #fff;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.header-user {
+  font-size: 0.85rem;
+  color: #a0aec0;
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid #0f3460;
+  color: #a0aec0;
+  font-size: 0.8rem;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.logout-btn:hover {
+  background: #0f3460;
+  color: #fff;
+}
+
+/* ── Card ──────────────────────────────────────────────── */
+
+.card-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.cardGeneral {
+  width: 100%;
+  background: linear-gradient(135deg, #1a1a6e, #16213e, #0f3460);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cardGeneral::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+}
+
+.cardGeneral p {
+  font-size: 0.75rem;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cardGeneral p span {
+  display: block;
+  font-size: 1rem;
+  color: #fff;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.cardDetails {
+  width: 100%;
+  background: #16213e;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.cardDetails p {
+  font-size: 0.75rem;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cardDetails p span {
+  display: block;
+  font-size: 1rem;
+  color: #fff;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  margin-top: 4px;
+}
+
+/* ── My Cards list ─────────────────────────────────────── */
+
+.card-list-item {
+  width: 100%;
+  background: #16213e;
+  border-radius: 14px;
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.card-list-item:hover {
+  background: #0f3460;
+}
+
+.card-list-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-list-type {
+  font-size: 0.75rem;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.card-list-number {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.card-list-balance {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #68d391;
+}
+
+/* ── Footer ────────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #16213e;
+  border-top: 1px solid #0f3460;
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+}
+
+.footer-links a {
+  color: #718096;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: #fff;
+}
