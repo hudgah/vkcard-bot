@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { Telegraf } = require('telegraf');
 const path = require('path');
-const { findRegistrationToken } = require('../src/db');
 const bcrypt = require('bcrypt');
 const app = express();
 app.use(express.json());
@@ -90,7 +89,11 @@ app.post('/api/admin/notify', requireAuth, async (req, res) => {
 app.post('/api/register', async (req, res) => {
   const { email, password, token } = req.body;
   try {
-    const regToken = await findRegistrationToken(token);
+    const tokenResult = await pool.query(
+      'SELECT * FROM registration_tokens WHERE token = $1 AND expires_at > NOW() AND used = FALSE',
+      [token]
+    );
+    const regToken = tokenResult.rows[0];
     if (!regToken) {
       return res.status(400).json({ error: 'Invalid or expired token' });
     }

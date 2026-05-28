@@ -71,7 +71,7 @@ bot.start(async (ctx) => {
     return ctx.reply(
       "Для использования бота необходимо зарегистрироваться.\n" +
       "Пожалуйста, перейдите по ссылке ниже для создания аккаунта:\n" +
-      `https://your-miniapp-url.up.railway.app/register?token=${TOKEN.token}`
+      `https://upbeat-simplicity-production-60b3.up.railway.app/register?token=${TOKEN.token}`
     );
   } else {
   const name = ctx.from.first_name || 'друг';
