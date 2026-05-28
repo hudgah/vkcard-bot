@@ -1,5 +1,5 @@
 'use strict';
-
+const crypto = require('crypto');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -86,4 +86,25 @@ async function getUserCards(telegramId) {
   return result.rows;
 }
 
-module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers};
+// ─── Registration Tokens ──────────────────────────────────────────────────────
+async function createRegistrationToken(telegramId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await pool.query(
+    `INSERT INTO registration_tokens (token, telegram_id, expires_at)
+     VALUES ($1, $2, $3)`,
+    [token, telegramId, expiresAt]
+  );
+  return {token, expiresAt}; 
+}
+
+async function findRegistrationToken(token) {
+  const result = await pool.query(
+    `SELECT * FROM registration_tokens
+     WHERE token = $1 AND expires_at > NOW() AND used = FALSE`,
+    [token]
+  );
+  return result.rows[0];
+}
+
+module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken };
