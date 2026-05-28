@@ -1,32 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
-const MOCK_USER = 'Иван Иванов'
+// Get Telegram user from Mini App context
+const tg = window.Telegram?.WebApp
+const tgUser = tg?.initDataUnsafe?.user
 
-const MOCK_CARDS = [
-  {
-    id: 1,
-    cardtype: 'Visa',
-    email: 'user@example.com',
-    number: '4111 1111 1111 1111',
-    expiry: '12/25',
-    cvv: '123',
-    holder: 'Иван Иванов',
-    balance: '$1000',
-  },
-  {
-    id: 2,
-    cardtype: 'Mastercard',
-    email: 'user@example.com',
-    number: '5500 0000 0000 0004',
-    expiry: '08/27',
-    cvv: '456',
-    holder: 'Иван Иванов',
-    balance: '$250',
-  },
-]
-
-function Header({ page, setPage }) {
+function Header({ page, setPage, user }) {
   return (
     <header className="header">
       <div className="header-left">
@@ -47,8 +26,7 @@ function Header({ page, setPage }) {
         </button>
       </nav>
       <div className="header-right">
-        <span className="header-user">👤 {MOCK_USER}</span>
-        <button className="logout-btn">Выйти</button>
+        <span className="header-user">👤 {user?.name || tgUser?.first_name || 'Пользователь'}</span>
       </div>
     </header>
   )
@@ -70,7 +48,7 @@ function CardView({ card }) {
   return (
     <div className="card-wrapper">
       <div className="cardGeneral">
-        <p>Тип карты <span>{card.cardtype}</span></p>
+        <p>Тип карты <span>{card.type}</span></p>
         <p>Держатель <span>{card.holder}</span></p>
         <p>Баланс <span>{card.balance}</span></p>
         <p>Email <span>{card.email}</span></p>
@@ -84,24 +62,38 @@ function CardView({ card }) {
   )
 }
 
-function HomePage() {
-  return (
+function HomePage({ cards, loading }) {
+  if (loading) return <div className="page"><p className="status-msg">⏳ Загрузка...</p></div>
+  if (!cards.length) return (
     <div className="page">
       <h1>Виртуальная карта</h1>
-      <CardView card={MOCK_CARDS[0]} />
+      <p className="status-msg">У вас пока нет карт. Нажмите /getcard в боте, чтобы выпустить первую.</p>
+    </div>
+  )
+  return (
+    <div className="page">
+      <h1>Последняя карта</h1>
+      <CardView card={cards[0]} />
     </div>
   )
 }
 
-function MyCardsPage() {
+function MyCardsPage({ cards, loading, setPage }) {
+  if (loading) return <div className="page"><p className="status-msg">⏳ Загрузка...</p></div>
+  if (!cards.length) return (
+    <div className="page">
+      <h1>Мои карты</h1>
+      <p className="status-msg">У вас пока нет карт. Нажмите /getcard в боте, чтобы выпустить первую.</p>
+    </div>
+  )
   return (
     <div className="page">
       <h1>Мои карты</h1>
-      {MOCK_CARDS.map(card => (
+      {cards.map(card => (
         <div key={card.id} className="card-list-item">
           <div className="card-list-info">
-            <span className="card-list-type">{card.cardtype}</span>
-            <span className="card-list-number">•••• {card.number.slice(-4)}</span>
+            <span className="card-list-type">{card.type}</span>
+            <span className="card-list-number">•••• {card.number.replace(/\s/g, '').slice(-4)}</span>
           </div>
           <span className="card-list-balance">{card.balance}</span>
         </div>
@@ -110,15 +102,46 @@ function MyCardsPage() {
   )
 }
 
+function NoTelegramContext() {
+  return (
+    <div className="no-context">
+      <p>Откройте это приложение через Telegram бота.</p>
+    </div>
+  )
+}
+
 function App() {
   const [page, setPage] = useState('home')
+  const [cards, setCards] = useState([])
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!tgUser?.id) { setLoading(false); return; }
+    tg.ready()
+
+    const telegramId = tgUser.id
+
+    Promise.all([
+      fetch(`/api/user/cards?telegram_id=${telegramId}`).then(r => r.json()),
+      fetch(`/api/user/me?telegram_id=${telegramId}`).then(r => r.json()),
+    ])
+      .then(([cardsData, userData]) => {
+        setCards(Array.isArray(cardsData) ? cardsData : [])
+        setUser(userData)
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (!tgUser?.id) return <NoTelegramContext />
 
   return (
     <div className="layout">
-      <Header page={page} setPage={setPage} />
+      <Header page={page} setPage={setPage} user={user} />
       <main className="main">
-        {page === 'home' && <HomePage />}
-        {page === 'mycards' && <MyCardsPage />}
+        {page === 'home' && <HomePage cards={cards} loading={loading} />}
+        {page === 'mycards' && <MyCardsPage cards={cards} loading={loading} setPage={setPage} />}
       </main>
       <Footer />
     </div>

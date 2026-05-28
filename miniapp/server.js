@@ -130,6 +130,40 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// ─── User API ────────────────────────────────────────────────────────────────
+
+app.get('/api/user/cards', async (req, res) => {
+  const { telegram_id } = req.query;
+  if (!telegram_id) return res.status(400).json({ error: 'telegram_id required' });
+  try {
+    const result = await pool.query(
+      `SELECT c.* FROM cards c
+       JOIN users u ON c.user_id = u.id
+       WHERE u.telegram_id = $1
+       ORDER BY c.created_at DESC`,
+      [telegram_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/user/me', async (req, res) => {
+  const { telegram_id } = req.query;
+  if (!telegram_id) return res.status(400).json({ error: 'telegram_id required' });
+  try {
+    const result = await pool.query(
+      'SELECT id, name, email, role FROM users WHERE telegram_id = $1',
+      [telegram_id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Static files ─────────────────────────────────────────────────────────────
 
 app.use(express.static('dist'));
