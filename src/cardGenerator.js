@@ -77,7 +77,7 @@ function generateCard(email, name) {
     expiry:  generateExpiry(),
     cvv:     generateCVV(),
     holder:  name || 'John Doe',
-    balance: `$${randInt(50, 500)}.00`,
+    balance: '$0.00',
     services: SUPPORTED_SERVICES,
   };
 }

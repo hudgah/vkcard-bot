@@ -22,17 +22,19 @@ async function initDb() {
     );
 
     CREATE TABLE IF NOT EXISTS cards (
-      id         SERIAL PRIMARY KEY,
-      user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      type       VARCHAR(50),
-      number     VARCHAR(20),
-      expiry     VARCHAR(10),
-      cvv        VARCHAR(5),
-      holder     VARCHAR(255),
-      balance    VARCHAR(50),
-      email      VARCHAR(255),
-      created_at TIMESTAMP DEFAULT NOW()
+      id            SERIAL PRIMARY KEY,
+      user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      type          VARCHAR(50),
+      number        VARCHAR(20),
+      expiry        VARCHAR(10),
+      cvv           VARCHAR(5),
+      holder        VARCHAR(255),
+      balance       VARCHAR(50),
+      balance_cents INTEGER DEFAULT 0,
+      email         VARCHAR(255),
+      created_at    TIMESTAMP DEFAULT NOW()
     );
+    ALTER TABLE cards ADD COLUMN IF NOT EXISTS balance_cents INTEGER DEFAULT 0;
     CREATE TABLE IF NOT EXISTS registration_tokens (
     token VARCHAR(255) PRIMARY KEY,
     telegram_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,

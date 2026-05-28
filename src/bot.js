@@ -1,7 +1,7 @@
 'use strict';
 
 require('dotenv').config();
-const { Telegraf, Markup, Scenes, session } = require('telegraf');
+const { Telegraf, Markup, session } = require('telegraf');
 const { generateCard } = require('./cardGenerator');
 const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken } = require('./db');
 
@@ -13,28 +13,7 @@ if (!BOT_TOKEN) {
 
 const bot = new Telegraf(BOT_TOKEN);
 
-const cardWizard = new Scenes.WizardScene(
-  'card-wizard',
-  async (ctx) => {
-    if (!await requireRegistration(ctx)) return ctx.scene.leave();
-    await ctx.reply('Отлично! Для выпуска карты мне нужно несколько данных.\n\nКакое имя указать на карте?');
-    return ctx.wizard.next();
-  },
-  async (ctx) => {
-    ctx.wizard.state.name = ctx.message.text;
-    await ctx.reply('Принято! Теперь укажите ваш email-адрес.');
-    return ctx.wizard.next();
-  },
-  async (ctx) => {
-    ctx.wizard.state.email = ctx.message.text;
-    await issueCard(ctx, ctx.wizard.state.email, ctx.wizard.state.name);
-    return ctx.scene.leave();
-  }
-);
-
-const stage = new Scenes.Stage([cardWizard]);
 bot.use(session());
-bot.use(stage.middleware());
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -103,7 +82,7 @@ bot.start(async (ctx) => {
 
 bot.command('getcard', async (ctx) => {
   if (!await requireRegistration(ctx)) return;
-  ctx.scene.enter('card-wizard');
+  await issueCard(ctx);
 });
 
 bot.command('mycards', async (ctx) => {
@@ -117,11 +96,7 @@ bot.command('help', showHelp);
 bot.action('get_card', async (ctx) => {
   await ctx.answerCbQuery();
   if (!await requireRegistration(ctx)) return;
-  try {
-    ctx.scene.enter('card-wizard');
-  } catch (err) {
-    console.error('Ошибка входа в сцену:', err.message);
-  }
+  await issueCard(ctx);
 });
 
 bot.action('how_it_works', async (ctx) => {
@@ -138,18 +113,17 @@ bot.action('how_it_works', async (ctx) => {
 
 // ─── Core logic ──────────────────────────────────────────────────────────────
 
-async function issueCard(ctx, email, name) {
+async function issueCard(ctx) {
   const loading = await ctx.reply('⏳ Выпускаем вашу виртуальную карту...');
 
   await new Promise(r => setTimeout(r, 1200));
 
+  const user = await findUserByTelegramId(ctx.from.id);
   const card = generateCard();
-  card.holder = name || ctx.from.first_name || 'IVAN PETROV';
-  card.email = email || 'demo@example.com';
+  card.holder = user.name ? user.name.toUpperCase() : (ctx.from.first_name || 'CARDHOLDER');
+  card.email = user.email || 'demo@example.com';
 
-  // Save user and card to database
   try {
-    const user = await findOrCreateUser(ctx.from.id, card.holder, card.email);
     await saveCard(user.id, card);
   } catch (err) {
     console.error('Ошибка БД:', err.message);
