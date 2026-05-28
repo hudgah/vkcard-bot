@@ -88,7 +88,7 @@ app.post('/api/admin/notify', requireAuth, async (req, res) => {
 app.use(express.static('dist'));
 
 // Catch-all: serve React app for any non-API route
-app.get('*', (req, res) => {
+app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
