@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const { Telegraf } = require('telegraf');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const app = express();
 app.use(express.json());
 
@@ -15,6 +16,47 @@ const pool = new Pool({
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
+// ─── Telegram initData verification ─────────────────────────────────────────
+
+function verifyTelegramInitData(initData) {
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash');
+  if (!hash) return null;
+
+  // Remove hash from the data before checking
+  params.delete('hash');
+
+  // Sort keys alphabetically and build the check string
+  const checkString = Array.from(params.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n');
+
+  // HMAC-SHA256(checkString, HMAC-SHA256("WebAppData", botToken))
+  const secretKey = crypto.createHmac('sha256', 'WebAppData')
+    .update(process.env.BOT_TOKEN)
+    .digest();
+  const expectedHash = crypto.createHmac('sha256', secretKey)
+    .update(checkString)
+    .digest('hex');
+
+  if (expectedHash !== hash) return null;
+
+  // Parse and return the user object from verified data
+  const userJson = params.get('user');
+  if (!userJson) return null;
+  return JSON.parse(userJson);
+}
+
+function requireTelegramAuth(req, res, next) {
+  const initData = req.headers['x-telegram-init-data'];
+  if (!initData) return res.status(401).json({ error: 'Missing Telegram auth' });
+  const user = verifyTelegramInitData(initData);
+  if (!user) return res.status(401).json({ error: 'Invalid Telegram initData' });
+  req.tgUser = user;
+  next();
+}
 
 // ─── JWT Middleware ───────────────────────────────────────────────────────────
 
@@ -132,16 +174,14 @@ app.post('/api/register', async (req, res) => {
 
 // ─── User API ────────────────────────────────────────────────────────────────
 
-app.get('/api/user/cards', async (req, res) => {
-  const { telegram_id } = req.query;
-  if (!telegram_id) return res.status(400).json({ error: 'telegram_id required' });
+app.get('/api/user/cards', requireTelegramAuth, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT c.* FROM cards c
        JOIN users u ON c.user_id = u.id
        WHERE u.telegram_id = $1
        ORDER BY c.created_at DESC`,
-      [telegram_id]
+      [req.tgUser.id]
     );
     res.json(result.rows);
   } catch (err) {
@@ -149,13 +189,11 @@ app.get('/api/user/cards', async (req, res) => {
   }
 });
 
-app.get('/api/user/me', async (req, res) => {
-  const { telegram_id } = req.query;
-  if (!telegram_id) return res.status(400).json({ error: 'telegram_id required' });
+app.get('/api/user/me', requireTelegramAuth, async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT id, name, email, role FROM users WHERE telegram_id = $1',
-      [telegram_id]
+      [req.tgUser.id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'User not found' });
     res.json(result.rows[0]);

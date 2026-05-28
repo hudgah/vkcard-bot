@@ -120,11 +120,11 @@ function App() {
     if (!tgUser?.id) { setLoading(false); return; }
     tg.ready()
 
-    const telegramId = tgUser.id
+    const headers = { 'x-telegram-init-data': tg.initData }
 
     Promise.all([
-      fetch(`/api/user/cards?telegram_id=${telegramId}`).then(r => r.json()),
-      fetch(`/api/user/me?telegram_id=${telegramId}`).then(r => r.json()),
+      fetch('/api/user/cards', { headers }).then(r => r.json()),
+      fetch('/api/user/me', { headers }).then(r => r.json()),
     ])
       .then(([cardsData, userData]) => {
         setCards(Array.isArray(cardsData) ? cardsData : [])
