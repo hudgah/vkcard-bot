@@ -33,6 +33,12 @@ async function initDb() {
       email      VARCHAR(255),
       created_at TIMESTAMP DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS registration_tokens (
+    token VARCHAR(255) PRIMARY KEY,
+    telegram_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE
+  );
   `);
   console.log('✅ База данных инициализирована');
 }
