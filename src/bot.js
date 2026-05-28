@@ -57,6 +57,7 @@ function formatCard(card) {
 const mainMenu = Markup.inlineKeyboard([
   [Markup.button.callback('💳 Получить виртуальную карту', 'get_card')],
   [Markup.button.callback('ℹ️ Как это работает', 'how_it_works')],
+  [Markup.button.url('Открыть Страницу', 'https://t.me/vkcard_bot/VCard')]
 ]);
 
 // ─── Commands ────────────────────────────────────────────────────────────────
@@ -117,6 +118,7 @@ async function issueCard(ctx, email, name) {
     formatCard(card),
     Markup.inlineKeyboard([
       [Markup.button.callback('🔄 Новая карта', 'get_card')],
+      [Markup.button.url('Открыть Страницу', 'https://t.me/vkcard_bot/VCard')]
     ])
   );
 }
