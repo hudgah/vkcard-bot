@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import Admin from './Admin.jsx'
+import RegisterPage from './Register.jsx'
 
-const isAdmin = window.location.pathname.startsWith('/admin')
+const path = window.location.pathname
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {isAdmin ? <Admin /> : <App />}
-  </StrictMode>,
+    {path.startsWith('/admin') ? <Admin /> :
+     path.startsWith('/register') ? <RegisterPage /> :
+     <App />}
+  </StrictMode>
 )

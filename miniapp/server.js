@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { Telegraf } = require('telegraf');
 const path = require('path');
-
+const { findRegistrationToken } = require('../src/db');
+const bcrypt = require('bcrypt');
 const app = express();
 app.use(express.json());
 
@@ -78,6 +79,31 @@ app.post('/api/admin/notify', requireAuth, async (req, res) => {
       }
     }
     res.json({ sent, failed, total: users.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+// ─── Registration API ───────────────────────────────
+app.post('/api/register', async (req, res) => {
+  const { email, password, token } = req.body;
+  try {
+    const regToken = await findRegistrationToken(token);
+    if (!regToken) {
+      return res.status(400).json({ error: 'Invalid or expired token' });
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, email = $2 WHERE telegram_id = $3',
+      [hashedPassword, email, regToken.telegram_id]
+    );
+    await pool.query(
+      'UPDATE registration_tokens SET used = TRUE WHERE token = $1',
+      [token]
+    );
+    return res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
