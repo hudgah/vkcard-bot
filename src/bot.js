@@ -3,6 +3,7 @@
 require('dotenv').config();
 const { Telegraf, Markup, Scenes, session } = require('telegraf');
 const { generateCard } = require('./cardGenerator');
+const { initDb, findOrCreateUser, saveCard, getUserCards } = require('./db');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -76,6 +77,7 @@ bot.command('getcard', async (ctx) => {
   ctx.scene.enter('card-wizard');
 });
 
+bot.command('mycards', showMyCards);
 bot.command('help', showHelp);
 
 // ─── Actions (button callbacks) ──────────────────────────────────────────────
@@ -112,6 +114,14 @@ async function issueCard(ctx, email, name) {
   card.holder = name || ctx.from.first_name || 'IVAN PETROV';
   card.email = email || 'demo@example.com';
 
+  // Save user and card to database
+  try {
+    const user = await findOrCreateUser(ctx.from.id, card.holder, card.email);
+    await saveCard(user.id, card);
+  } catch (err) {
+    console.error('Ошибка БД:', err.message);
+  }
+
   ctx.deleteMessage(loading.message_id).catch(() => {});
 
   return ctx.replyWithMarkdownV2(
@@ -123,11 +133,30 @@ async function issueCard(ctx, email, name) {
   );
 }
 
+async function showMyCards(ctx) {
+  try {
+    const cards = await getUserCards(ctx.from.id);
+    if (cards.length === 0) {
+      return ctx.reply('У вас пока нет карт. Нажмите /getcard чтобы выпустить первую.');
+    }
+
+    const lines = cards.map((c, i) =>
+      `${i + 1}\\. *${escMd(c.type)}* \\— \`${escMd(c.number)}\` \\(${escMd(c.expiry)}\\)`
+    ).join('\n');
+
+    return ctx.replyWithMarkdownV2(`*Ваши карты:*\n\n${lines}`);
+  } catch (err) {
+    console.error('Ошибка получения карт:', err.message);
+    return ctx.reply('Не удалось загрузить карты. Попробуйте позже.');
+  }
+}
+
 async function showHelp(ctx) {
   return ctx.replyWithMarkdownV2(
     `*Доступные команды:*\n\n` +
     `/start — Главный экран\n` +
     `/getcard — Выпустить виртуальную карту\n` +
+    `/mycards — Мои карты\n` +
     `/help — Показать это сообщение`
   );
 }
@@ -139,7 +168,12 @@ function escMd(text) {
 
 // ─── Launch ──────────────────────────────────────────────────────────────────
 
-bot.launch(() => console.log('🤖 Бот запущен...'));
+initDb()
+  .then(() => bot.launch(() => console.log('🤖 Бот запущен...')))
+  .catch(err => {
+    console.error('Ошибка инициализации БД:', err.message);
+    process.exit(1);
+  });
 
 process.once('SIGINT',  () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
