@@ -3,7 +3,7 @@
 require('dotenv').config();
 const { Telegraf, Markup, Scenes, session } = require('telegraf');
 const { generateCard } = require('./cardGenerator');
-const { initDb, findOrCreateUser, saveCard, getUserCards } = require('./db');
+const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken } = require('./db');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -63,14 +63,24 @@ const mainMenu = Markup.inlineKeyboard([
 
 // ─── Commands ────────────────────────────────────────────────────────────────
 
-bot.start((ctx) => {
+bot.start(async (ctx) => {
+  const user = await findUserByTelegramId(ctx.from.id);
+  if (!user || !user.password_hash) {
+    await findOrCreateUser(ctx.from.id, ctx.from.first_name || 'Unknown', null);
+    const TOKEN = await createRegistrationToken(ctx.from.id);
+    return ctx.reply(
+      "Для использования бота необходимо зарегистрироваться.\n" +
+      "Пожалуйста, перейдите по ссылке ниже для создания аккаунта:\n" +
+      `https://your-miniapp-url.up.railway.app/register?token=${TOKEN.token}`
+    );
+  } else {
   const name = ctx.from.first_name || 'друг';
   return ctx.replyWithMarkdownV2(
     `👋 Привет, *${escMd(name)}*\\! Добро пожаловать в *VirtualCard Bot*\\.\n\n` +
     `Моментальные виртуальные карты для международных платежей — работает на Amazon, Netflix, Booking и 180\\+ других сервисах\\.\n\n` +
     `🚀 Выпустите карту за *2 минуты*\\.`,
     mainMenu
-  );
+  );}
 });
 
 bot.command('getcard', async (ctx) => {
