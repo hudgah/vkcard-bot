@@ -16,6 +16,7 @@ const bot = new Telegraf(BOT_TOKEN);
 const cardWizard = new Scenes.WizardScene(
   'card-wizard',
   async (ctx) => {
+    if (!await requireRegistration(ctx)) return ctx.scene.leave();
     await ctx.reply('Отлично! Для выпуска карты мне нужно несколько данных.\n\nКакое имя указать на карте?');
     return ctx.wizard.next();
   },
@@ -61,6 +62,23 @@ const mainMenu = Markup.inlineKeyboard([
   [Markup.button.url('Открыть Страницу', 'https://t.me/vkcard_bot/VCard')]
 ]);
 
+// ─── Registration guard ──────────────────────────────────────────────────────
+
+async function requireRegistration(ctx) {
+  const user = await findUserByTelegramId(ctx.from.id);
+  if (!user || !user.password_hash) {
+    await findOrCreateUser(ctx.from.id, ctx.from.first_name || 'Unknown', null);
+    const TOKEN = await createRegistrationToken(ctx.from.id);
+    await ctx.reply(
+      "Для использования этой функции необходимо зарегистрироваться.\n" +
+      "Перейдите по ссылке ниже для создания аккаунта:\n" +
+      `https://upbeat-simplicity-production-60b3.up.railway.app/register?token=${TOKEN.token}`
+    );
+    return false;
+  }
+  return true;
+}
+
 // ─── Commands ────────────────────────────────────────────────────────────────
 
 bot.start(async (ctx) => {
@@ -84,16 +102,21 @@ bot.start(async (ctx) => {
 });
 
 bot.command('getcard', async (ctx) => {
+  if (!await requireRegistration(ctx)) return;
   ctx.scene.enter('card-wizard');
 });
 
-bot.command('mycards', showMyCards);
+bot.command('mycards', async (ctx) => {
+  if (!await requireRegistration(ctx)) return;
+  showMyCards(ctx);
+});
 bot.command('help', showHelp);
 
 // ─── Actions (button callbacks) ──────────────────────────────────────────────
 
 bot.action('get_card', async (ctx) => {
-  await ctx.answerCbQuery('Выпускаем карту... ⏳');
+  await ctx.answerCbQuery();
+  if (!await requireRegistration(ctx)) return;
   try {
     ctx.scene.enter('card-wizard');
   } catch (err) {

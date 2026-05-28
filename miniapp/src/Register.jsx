@@ -14,8 +14,19 @@ function RegisterPage() {
     if (urlToken) setToken(urlToken)
   }, [])
 
+  function validate() {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) return 'Введите корректный email-адрес.'
+    if (password.length < 8) return 'Пароль должен содержать не менее 8 символов.'
+    if (!/[A-Z]/.test(password)) return 'Пароль должен содержать хотя бы одну заглавную букву.'
+    if (!/[0-9]/.test(password)) return 'Пароль должен содержать хотя бы одну цифру.'
+    return null
+  }
+
   async function handleRegister(e) {
     e.preventDefault()
+    const validationError = validate()
+    if (validationError) { setError(validationError); return; }
     setLoading(true)
     setError('')
     try {

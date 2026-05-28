@@ -88,6 +88,24 @@ app.post('/api/admin/notify', requireAuth, async (req, res) => {
 // ─── Registration API ───────────────────────────────
 app.post('/api/register', async (req, res) => {
   const { email, password, token } = req.body;
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Введите корректный email-адрес.' });
+  }
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: 'Пароль должен содержать не менее 8 символов.' });
+  }
+  if (!/[A-Z]/.test(password)) {
+    return res.status(400).json({ error: 'Пароль должен содержать хотя бы одну заглавную букву.' });
+  }
+  if (!/[0-9]/.test(password)) {
+    return res.status(400).json({ error: 'Пароль должен содержать хотя бы одну цифру.' });
+  }
+  if (!token) {
+    return res.status(400).json({ error: 'Токен отсутствует.' });
+  }
+
   try {
     const tokenResult = await pool.query(
       'SELECT * FROM registration_tokens WHERE token = $1 AND expires_at > NOW() AND used = FALSE',
