@@ -53,6 +53,11 @@ async function findOrCreateUser(telegramId, name, email) {
   return result.rows[0];
 }
 
+async function getAllUsers() {
+  const result = await pool.query('SELECT * FROM users');
+  return result.rows;
+}
+
 // ─── Cards ───────────────────────────────────────────────────────────────────
 
 async function saveCard(userId, card) {
@@ -75,4 +80,4 @@ async function getUserCards(telegramId) {
   return result.rows;
 }
 
-module.exports = { initDb, findOrCreateUser, saveCard, getUserCards };
+module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers};
