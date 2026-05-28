@@ -202,6 +202,39 @@ app.get('/api/user/me', requireTelegramAuth, async (req, res) => {
   }
 });
 
+// ─── Balance API ─────────────────────────────────────────────────────────────
+
+app.get('/api/admin/user-cards', requireAuth, async (req, res) => {
+  const { user_id } = req.query;
+  if (!user_id) return res.status(400).json({ error: 'user_id required' });
+  try {
+    const result = await pool.query(
+      'SELECT * FROM cards WHERE user_id = $1 ORDER BY created_at DESC',
+      [user_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/add-balance', requireAuth, async (req, res) => {
+  const { card_id, amount } = req.body;
+  if (!card_id || amount == null) return res.status(400).json({ error: 'card_id and amount required' });
+  const cents = Math.round(parseFloat(amount) * 100);
+  if (isNaN(cents) || cents < 0) return res.status(400).json({ error: 'Invalid amount' });
+  try {
+    const result = await pool.query(
+      'UPDATE cards SET balance_cents = balance_cents + $1 WHERE id = $2 RETURNING *',
+      [cents, card_id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Card not found' });
+    res.json({ ok: true, balance_cents: result.rows[0].balance_cents });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Static files ─────────────────────────────────────────────────────────────
 
 app.use(express.static('dist'));

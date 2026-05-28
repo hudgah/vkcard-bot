@@ -56,6 +56,14 @@ function AdminPanel({ token, onLogout }) {
   const [result, setResult] = useState(null)
   const [sending, setSending] = useState(false)
 
+  // Balance state
+  const [selectedUser, setSelectedUser] = useState('')
+  const [userCards, setUserCards] = useState([])
+  const [selectedCard, setSelectedCard] = useState('')
+  const [balanceAmount, setBalanceAmount] = useState('')
+  const [balanceResult, setBalanceResult] = useState(null)
+  const [balanceLoading, setBalanceLoading] = useState(false)
+
   const headers = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
@@ -67,6 +75,39 @@ function AdminPanel({ token, onLogout }) {
       .then(setUsers)
       .catch(console.error)
   }, [])
+
+  useEffect(() => {
+    if (!selectedUser) { setUserCards([]); setSelectedCard(''); return; }
+    fetch(`${API}/api/admin/user-cards?user_id=${selectedUser}`, { headers })
+      .then(r => r.json())
+      .then(cards => { setUserCards(cards); setSelectedCard(''); })
+      .catch(console.error)
+  }, [selectedUser])
+
+  async function addBalance() {
+    if (!selectedCard || !balanceAmount) return
+    setBalanceLoading(true)
+    setBalanceResult(null)
+    try {
+      const res = await fetch(`${API}/api/admin/add-balance`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ card_id: selectedCard, amount: balanceAmount }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      const dollars = (data.balance_cents / 100).toFixed(2)
+      setBalanceResult({ ok: true, message: `✅ Готово! Новый баланс: $${dollars}` })
+      setBalanceAmount('')
+      // Refresh cards list
+      fetch(`${API}/api/admin/user-cards?user_id=${selectedUser}`, { headers })
+        .then(r => r.json()).then(setUserCards)
+    } catch (err) {
+      setBalanceResult({ error: err.message })
+    } finally {
+      setBalanceLoading(false)
+    }
+  }
 
   async function sendNotification() {
     if (!message.trim()) return
@@ -120,6 +161,62 @@ function AdminPanel({ token, onLogout }) {
             </p>
           )}
           {result?.error && <p className="admin-error">❌ {result.error}</p>}
+        </section>
+
+        {/* Balance manager */}
+        <section className="admin-section">
+          <h2>💰 Пополнить баланс карты</h2>
+          <select
+            className="admin-input"
+            value={selectedUser}
+            onChange={e => setSelectedUser(e.target.value)}
+          >
+            <option value="">— Выберите пользователя —</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.name || u.telegram_id} ({u.email || 'нет email'})
+              </option>
+            ))}
+          </select>
+
+          {userCards.length > 0 && (
+            <select
+              className="admin-input"
+              value={selectedCard}
+              onChange={e => setSelectedCard(e.target.value)}
+            >
+              <option value="">— Выберите карту —</option>
+              {userCards.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.type} •••• {c.number.replace(/\s/g, '').slice(-4)} — ${(c.balance_cents / 100).toFixed(2)}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {selectedCard && (
+            <>
+              <input
+                type="number"
+                className="admin-input"
+                placeholder="Сумма в долларах (например, 50)"
+                value={balanceAmount}
+                onChange={e => setBalanceAmount(e.target.value)}
+                min="0"
+                step="0.01"
+              />
+              <button
+                className="admin-btn"
+                onClick={addBalance}
+                disabled={balanceLoading || !balanceAmount}
+              >
+                {balanceLoading ? 'Пополняем...' : '💸 Пополнить'}
+              </button>
+            </>
+          )}
+
+          {balanceResult?.ok && <p className="admin-success">{balanceResult.message}</p>}
+          {balanceResult?.error && <p className="admin-error">❌ {balanceResult.error}</p>}
         </section>
 
         {/* Users table */}

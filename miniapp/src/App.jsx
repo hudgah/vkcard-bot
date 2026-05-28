@@ -50,7 +50,7 @@ function CardView({ card }) {
       <div className="cardGeneral">
         <p>Тип карты <span>{card.type}</span></p>
         <p>Держатель <span>{card.holder}</span></p>
-        <p>Баланс <span>{card.balance}</span></p>
+        <p>Баланс <span>${((card.balance_cents ?? 0) / 100).toFixed(2)}</span></p>
         <p>Email <span>{card.email}</span></p>
       </div>
       <div className="cardDetails">
@@ -95,7 +95,7 @@ function MyCardsPage({ cards, loading, setPage }) {
             <span className="card-list-type">{card.type}</span>
             <span className="card-list-number">•••• {card.number.replace(/\s/g, '').slice(-4)}</span>
           </div>
-          <span className="card-list-balance">{card.balance}</span>
+          <span className="card-list-balance">${((card.balance_cents ?? 0) / 100).toFixed(2)}</span>
         </div>
       ))}
     </div>
