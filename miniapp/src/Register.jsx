@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import './Register.css'
 
 function RegisterPage() {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [token, setToken] = useState('')
@@ -15,6 +17,8 @@ function RegisterPage() {
   }, [])
 
   function validate() {
+    if (!firstName.trim()) return 'Введите имя.'
+    if (!lastName.trim()) return 'Введите фамилию.'
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) return 'Введите корректный email-адрес.'
     if (password.length < 8) return 'Пароль должен содержать не менее 8 символов.'
@@ -33,7 +37,7 @@ function RegisterPage() {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, token }),
+        body: JSON.stringify({ firstName, lastName, email, password, token }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Что-то пошло не так')
@@ -66,6 +70,24 @@ function RegisterPage() {
         <h1>Создать аккаунт</h1>
         <p className="register-subtitle">Введите данные для входа в VirtualCard</p>
         <form onSubmit={handleRegister}>
+          <div className="register-row">
+            <input
+              type="text"
+              placeholder="Имя"
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              className="register-input"
+              required
+            />
+            <input
+              type="text"
+              placeholder="Фамилия"
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              className="register-input"
+              required
+            />
+          </div>
           <input
             type="email"
             placeholder="Email"

@@ -129,8 +129,10 @@ app.post('/api/admin/notify', requireAuth, async (req, res) => {
 
 // ─── Registration API ───────────────────────────────
 app.post('/api/register', async (req, res) => {
-  const { email, password, token } = req.body;
+  const { firstName, lastName, email, password, token } = req.body;
 
+  if (!firstName || !firstName.trim()) return res.status(400).json({ error: 'Введите имя.' });
+  if (!lastName || !lastName.trim()) return res.status(400).json({ error: 'Введите фамилию.' });
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!email || !emailRegex.test(email)) {
     return res.status(400).json({ error: 'Введите корректный email-адрес.' });
@@ -148,6 +150,8 @@ app.post('/api/register', async (req, res) => {
     return res.status(400).json({ error: 'Токен отсутствует.' });
   }
 
+  const fullName = `${firstName.trim()} ${lastName.trim()}`;
+
   try {
     const tokenResult = await pool.query(
       'SELECT * FROM registration_tokens WHERE token = $1 AND expires_at > NOW() AND used = FALSE',
@@ -159,8 +163,8 @@ app.post('/api/register', async (req, res) => {
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     await pool.query(
-      'UPDATE users SET password_hash = $1, email = $2 WHERE telegram_id = $3',
-      [hashedPassword, email, regToken.telegram_id]
+      'UPDATE users SET password_hash = $1, email = $2, name = $3 WHERE telegram_id = $4',
+      [hashedPassword, email, fullName, regToken.telegram_id]
     );
     await pool.query(
       'UPDATE registration_tokens SET used = TRUE WHERE token = $1',
