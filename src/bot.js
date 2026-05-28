@@ -114,11 +114,15 @@ bot.action('how_it_works', async (ctx) => {
 // ─── Core logic ──────────────────────────────────────────────────────────────
 
 async function issueCard(ctx) {
+  const user = await findUserByTelegramId(ctx.from.id);
+  const existing = await getUserCards(ctx.from.id);
+  if (existing.length >= 3) {
+    return ctx.reply('У вас уже 3 карты — это максимум. Используйте /mycards для просмотра ваших карт.');
+  }
+
   const loading = await ctx.reply('⏳ Выпускаем вашу виртуальную карту...');
 
   await new Promise(r => setTimeout(r, 1200));
-
-  const user = await findUserByTelegramId(ctx.from.id);
   const card = generateCard();
   card.holder = user.name ? user.name.toUpperCase() : (ctx.from.first_name || 'CARDHOLDER');
   card.email = user.email || 'demo@example.com';
