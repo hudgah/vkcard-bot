@@ -3,7 +3,7 @@
 require('dotenv').config();
 const { Telegraf, Markup, session } = require('telegraf');
 const { generateCard } = require('./cardGenerator');
-const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken, deductBalance, getOrCreateReferralCode, getReferralCount } = require('./db');
+const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken, deductBalance, creditBalance, getOrCreateReferralCode, getReferralCount, getReferrer, getLatestCard } = require('./db');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -131,12 +131,32 @@ bot.action('how_it_works', async (ctx) => {
 bot.action(/^pay_10:(\d+)$/, async (ctx) => {
   await ctx.answerCbQuery();
   const cardId = ctx.match[1];
-  const result = await deductBalance(cardId, 1000);
+  const PAYMENT_CENTS = 1000;
+
+  const result = await deductBalance(cardId, PAYMENT_CENTS);
   if (!result) {
     return ctx.reply('❌ Недостаточно средств. Пополните баланс карты.');
   }
+
   const newBalance = (result.balance_cents / 100).toFixed(2);
-  return ctx.reply(`✅ Оплата $10.00 прошла успешно\\. Остаток на карте: *$${escMd(newBalance)}*`, { parse_mode: 'MarkdownV2' });
+  await ctx.reply(`✅ Оплата $10.00 прошла успешно. Остаток на карте: *$${escMd(newBalance)}*`, { parse_mode: 'MarkdownV2' });
+
+  const user = await findUserByTelegramId(ctx.from.id);
+  const referrer = await getReferrer(user.id);
+  if (referrer) {
+    const commission = Math.floor(PAYMENT_CENTS * 0.001);
+    if (commission > 0) {
+      const referrerCard = await getLatestCard(referrer.id);
+      if (referrerCard) {
+        await creditBalance(referrerCard.id, commission);
+        const commissionDollars = (commission / 100).toFixed(2);
+        bot.telegram.sendMessage(
+          referrer.telegram_id,
+          `💰 Вы получили $${commissionDollars} — реферальная комиссия 0.1% с платежа вашего реферала.`
+        ).catch(() => {});
+      }
+    }
+  }
 });
 
 // ─── Core logic ──────────────────────────────────────────────────────────────

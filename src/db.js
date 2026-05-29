@@ -86,6 +86,14 @@ async function saveCard(userId, card) {
   return result.rows[0];
 }
 
+async function creditBalance(cardId, cents) {
+  const result = await pool.query(
+    'UPDATE cards SET balance_cents = balance_cents + $1 WHERE id = $2 RETURNING *',
+    [cents, cardId]
+  );
+  return result.rows[0] || null;
+}
+
 async function deductBalance(cardId, cents) {
   const result = await pool.query(
     `UPDATE cards SET balance_cents = balance_cents - $1
@@ -147,6 +155,16 @@ async function getLatestCard(userId) {
   return result.rows[0] || null;
 }
 
+async function getReferrer(userId) {
+  const result = await pool.query(
+    `SELECT u.* FROM users u
+     INNER JOIN users referred ON referred.referred_by = u.id
+     WHERE referred.id = $1`,
+    [userId]
+  );
+  return result.rows[0] || null;
+}
+
 // ─── Registration Tokens ──────────────────────────────────────────────────────
 async function createRegistrationToken(telegramId) {
   const token = crypto.randomBytes(32).toString('hex');
@@ -168,4 +186,4 @@ async function findRegistrationToken(token) {
   return result.rows[0];
 }
 
-module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken, findUserByTelegramId, deductBalance, getOrCreateReferralCode, getUserByReferralCode, getReferralCount, setReferredBy, getLatestCard };
+module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken, findUserByTelegramId, deductBalance, creditBalance, getOrCreateReferralCode, getUserByReferralCode, getReferralCount, setReferredBy, getLatestCard, getReferrer };
