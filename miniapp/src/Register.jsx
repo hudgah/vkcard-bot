@@ -7,13 +7,15 @@ function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [token, setToken] = useState('')
+  const [ref, setRef] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const urlToken = new URLSearchParams(window.location.search).get('token')
-    if (urlToken) setToken(urlToken)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('token')) setToken(params.get('token'))
+    if (params.get('ref')) setRef(params.get('ref'))
   }, [])
 
   function validate() {
@@ -37,7 +39,7 @@ function RegisterPage() {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, email, password, token }),
+        body: JSON.stringify({ firstName, lastName, email, password, token, ref }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Что-то пошло не так')

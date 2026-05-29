@@ -129,7 +129,7 @@ app.post('/api/admin/notify', requireAuth, async (req, res) => {
 
 // ─── Registration API ───────────────────────────────
 app.post('/api/register', async (req, res) => {
-  const { firstName, lastName, email, password, token } = req.body;
+  const { firstName, lastName, email, password, token, ref } = req.body;
 
   if (!firstName || !firstName.trim()) return res.status(400).json({ error: 'Введите имя.' });
   if (!lastName || !lastName.trim()) return res.status(400).json({ error: 'Введите фамилию.' });
@@ -162,14 +162,52 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired token' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    await pool.query(
-      'UPDATE users SET password_hash = $1, email = $2, name = $3 WHERE telegram_id = $4',
+    const userResult = await pool.query(
+      'UPDATE users SET password_hash = $1, email = $2, name = $3 WHERE telegram_id = $4 RETURNING *',
       [hashedPassword, email, fullName, regToken.telegram_id]
     );
+    const newUser = userResult.rows[0];
+
     await pool.query(
       'UPDATE registration_tokens SET used = TRUE WHERE token = $1',
       [token]
     );
+
+    // ─── Process referral ────────────────────────────────────────────────────
+    if (ref) {
+      const referrer = await pool.query(
+        'SELECT * FROM users WHERE referral_code = $1', [ref]
+      );
+      const referrerUser = referrer.rows[0];
+
+      if (referrerUser && referrerUser.id !== newUser.id) {
+        const referralCount = await pool.query(
+          'SELECT COUNT(*) FROM users WHERE referred_by = $1', [referrerUser.id]
+        );
+        const alreadyReferred = parseInt(referralCount.rows[0].count) > 0;
+
+        if (!alreadyReferred) {
+          await pool.query('UPDATE users SET referred_by = $1 WHERE id = $2', [referrerUser.id, newUser.id]);
+
+          const latestCard = await pool.query(
+            'SELECT * FROM cards WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+            [referrerUser.id]
+          );
+          if (latestCard.rows[0]) {
+            await pool.query(
+              'UPDATE cards SET balance_cents = balance_cents + 500 WHERE id = $1',
+              [latestCard.rows[0].id]
+            );
+          }
+
+          bot.telegram.sendMessage(
+            referrerUser.telegram_id,
+            `🎉 Ваш реферал ${fullName} зарегистрировался! Вам начислено $5.00 на карту.`
+          ).catch(() => {});
+        }
+      }
+    }
+
     return res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

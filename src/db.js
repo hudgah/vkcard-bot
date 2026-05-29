@@ -35,6 +35,8 @@ async function initDb() {
       created_at    TIMESTAMP DEFAULT NOW()
     );
     ALTER TABLE cards ADD COLUMN IF NOT EXISTS balance_cents INTEGER DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(8) UNIQUE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id);
     CREATE TABLE IF NOT EXISTS registration_tokens (
     token VARCHAR(255) PRIMARY KEY,
     telegram_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,
@@ -105,6 +107,46 @@ async function getUserCards(telegramId) {
   return result.rows;
 }
 
+// ─── Referrals ───────────────────────────────────────────────────────────────
+
+async function getOrCreateReferralCode(userId) {
+  const existing = await pool.query('SELECT referral_code FROM users WHERE id = $1', [userId]);
+  if (existing.rows[0].referral_code) return existing.rows[0].referral_code;
+
+  let code, inserted;
+  do {
+    code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    inserted = await pool.query(
+      'UPDATE users SET referral_code = $1 WHERE id = $2 AND referral_code IS NULL RETURNING referral_code',
+      [code, userId]
+    );
+  } while (inserted.rows.length === 0);
+
+  return code;
+}
+
+async function getUserByReferralCode(code) {
+  const result = await pool.query('SELECT * FROM users WHERE referral_code = $1', [code]);
+  return result.rows[0] || null;
+}
+
+async function getReferralCount(userId) {
+  const result = await pool.query('SELECT COUNT(*) FROM users WHERE referred_by = $1', [userId]);
+  return parseInt(result.rows[0].count);
+}
+
+async function setReferredBy(newUserId, referrerId) {
+  await pool.query('UPDATE users SET referred_by = $1 WHERE id = $2', [referrerId, newUserId]);
+}
+
+async function getLatestCard(userId) {
+  const result = await pool.query(
+    'SELECT * FROM cards WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+    [userId]
+  );
+  return result.rows[0] || null;
+}
+
 // ─── Registration Tokens ──────────────────────────────────────────────────────
 async function createRegistrationToken(telegramId) {
   const token = crypto.randomBytes(32).toString('hex');
@@ -126,4 +168,4 @@ async function findRegistrationToken(token) {
   return result.rows[0];
 }
 
-module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken, findUserByTelegramId, deductBalance };
+module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken, findUserByTelegramId, deductBalance, getOrCreateReferralCode, getUserByReferralCode, getReferralCount, setReferredBy, getLatestCard };

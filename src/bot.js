@@ -3,7 +3,7 @@
 require('dotenv').config();
 const { Telegraf, Markup, session } = require('telegraf');
 const { generateCard } = require('./cardGenerator');
-const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken, deductBalance } = require('./db');
+const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken, deductBalance, getOrCreateReferralCode, getReferralCount } = require('./db');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -65,19 +65,36 @@ bot.start(async (ctx) => {
   if (!user || !user.password_hash) {
     await findOrCreateUser(ctx.from.id, ctx.from.first_name || 'Unknown', null);
     const TOKEN = await createRegistrationToken(ctx.from.id);
+    const refPayload = ctx.startPayload?.startsWith('ref_') ? `&ref=${ctx.startPayload.slice(4)}` : '';
     return ctx.reply(
       "Для использования бота необходимо зарегистрироваться.\n" +
       "Пожалуйста, перейдите по ссылке ниже для создания аккаунта:\n" +
-      `https://upbeat-simplicity-production-60b3.up.railway.app/register?token=${TOKEN.token}`
+      `https://upbeat-simplicity-production-60b3.up.railway.app/register?token=${TOKEN.token}${refPayload}`
     );
-  } else {
+  }
   const name = ctx.from.first_name || 'друг';
   return ctx.replyWithMarkdownV2(
     `👋 Привет, *${escMd(name)}*\\! Добро пожаловать в *VirtualCard Bot*\\.\n\n` +
     `Моментальные виртуальные карты для международных платежей — работает на Amazon, Netflix, Booking и 180\\+ других сервисах\\.\n\n` +
     `🚀 Выпустите карту за *2 минуты*\\.`,
     mainMenu
-  );}
+  );
+});
+
+bot.command('referral', async (ctx) => {
+  if (!await requireRegistration(ctx)) return;
+  const user = await findUserByTelegramId(ctx.from.id);
+  const code = await getOrCreateReferralCode(user.id);
+  const count = await getReferralCount(user.id);
+  const remaining = 1 - count;
+  const link = `https://t.me/${ctx.botInfo.username}?start=ref_${code}`;
+  return ctx.reply(
+    `🔗 Ваша реферальная ссылка:\n${link}\n\n` +
+    `Приглашений использовано: ${count}/1\n` +
+    (remaining > 0
+      ? `Вы можете пригласить ещё ${remaining} человека. Когда они зарегистрируются, вы получите $5 на карту.`
+      : `Вы уже использовали своё приглашение.`)
+  );
 });
 
 bot.command('getcard', async (ctx) => {
