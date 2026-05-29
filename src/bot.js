@@ -3,7 +3,7 @@
 require('dotenv').config();
 const { Telegraf, Markup, session } = require('telegraf');
 const { generateCard } = require('./cardGenerator');
-const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken } = require('./db');
+const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken, deductBalance } = require('./db');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -111,6 +111,17 @@ bot.action('how_it_works', async (ctx) => {
   );
 });
 
+bot.action(/^pay_10:(\d+)$/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const cardId = ctx.match[1];
+  const result = await deductBalance(cardId, 1000);
+  if (!result) {
+    return ctx.reply('❌ Недостаточно средств. Пополните баланс карты.');
+  }
+  const newBalance = (result.balance_cents / 100).toFixed(2);
+  return ctx.reply(`✅ Оплата $10.00 прошла успешно\\. Остаток на карте: *$${escMd(newBalance)}*`, { parse_mode: 'MarkdownV2' });
+});
+
 // ─── Core logic ──────────────────────────────────────────────────────────────
 
 async function issueCard(ctx) {
@@ -127,8 +138,9 @@ async function issueCard(ctx) {
   card.holder = user.name ? user.name.toUpperCase() : (ctx.from.first_name || 'CARDHOLDER');
   card.email = user.email || 'demo@example.com';
 
+  let savedCard;
   try {
-    await saveCard(user.id, card);
+    savedCard = await saveCard(user.id, card);
   } catch (err) {
     console.error('Ошибка БД:', err.message);
   }
@@ -138,6 +150,7 @@ async function issueCard(ctx) {
   return ctx.replyWithMarkdownV2(
     formatCard(card),
     Markup.inlineKeyboard([
+      [Markup.button.callback('💸 Оплатить $10', `pay_10:${savedCard.id}`)],
       [Markup.button.callback('🔄 Новая карта', 'get_card')],
       [Markup.button.url('Открыть Страницу', 'https://t.me/vkcard_bot/VCard')]
     ])

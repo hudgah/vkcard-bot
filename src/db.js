@@ -84,6 +84,16 @@ async function saveCard(userId, card) {
   return result.rows[0];
 }
 
+async function deductBalance(cardId, cents) {
+  const result = await pool.query(
+    `UPDATE cards SET balance_cents = balance_cents - $1
+     WHERE id = $2 AND balance_cents >= $1
+     RETURNING *`,
+    [cents, cardId]
+  );
+  return result.rows[0] || null;
+}
+
 async function getUserCards(telegramId) {
   const result = await pool.query(
     `SELECT c.* FROM cards c
@@ -116,4 +126,4 @@ async function findRegistrationToken(token) {
   return result.rows[0];
 }
 
-module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken, findUserByTelegramId };
+module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken, findUserByTelegramId, deductBalance };
