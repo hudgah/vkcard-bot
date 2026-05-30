@@ -3,7 +3,7 @@
 require('dotenv').config();
 const { Telegraf, Markup, session } = require('telegraf');
 const { generateCard } = require('./cardGenerator');
-const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken, deductBalance, creditBalance, getOrCreateReferralCode, getReferralCount, getReferrer, getLatestCard } = require('./db');
+const { initDb, findOrCreateUser, saveCard, getUserCards, findUserByTelegramId, createRegistrationToken, deductBalance, creditBalance, creditUserBalance, drainUserBalanceToCard, getOrCreateReferralCode, getReferralCount, getReferrer, getLatestCard } = require('./db');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -106,6 +106,13 @@ bot.command('mycards', async (ctx) => {
   if (!await requireRegistration(ctx)) return;
   showMyCards(ctx);
 });
+bot.command('balance', async (ctx) => {
+  if (!await requireRegistration(ctx)) return;
+  const user = await findUserByTelegramId(ctx.from.id);
+  const dollars = ((user.balance_cents ?? 0) / 100).toFixed(2);
+  return ctx.reply(`💰 Ваш общий баланс: $${dollars}\n\nОн автоматически переносится на карту при следующем /getcard.`);
+});
+
 bot.command('help', showHelp);
 
 // ─── Actions (button callbacks) ──────────────────────────────────────────────
@@ -178,6 +185,11 @@ async function issueCard(ctx) {
   let savedCard;
   try {
     savedCard = await saveCard(user.id, card);
+    const transferred = await drainUserBalanceToCard(user.id, savedCard.id);
+    if (transferred > 0) {
+      const dollars = (transferred / 100).toFixed(2);
+      await ctx.reply(`💰 $${dollars} с вашего общего баланса перенесено на новую карту.`);
+    }
   } catch (err) {
     console.error('Ошибка БД:', err.message);
   }

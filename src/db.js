@@ -37,6 +37,7 @@ async function initDb() {
     ALTER TABLE cards ADD COLUMN IF NOT EXISTS balance_cents INTEGER DEFAULT 0;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(8) UNIQUE;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS balance_cents INTEGER DEFAULT 0;
     CREATE TABLE IF NOT EXISTS registration_tokens (
     token VARCHAR(255) PRIMARY KEY,
     telegram_id BIGINT NOT NULL REFERENCES users(telegram_id) ON DELETE CASCADE,
@@ -84,6 +85,23 @@ async function saveCard(userId, card) {
     [userId, card.type, card.number, card.expiry, card.cvv, card.holder, card.balance, card.email]
   );
   return result.rows[0];
+}
+
+async function creditUserBalance(userId, cents) {
+  const result = await pool.query(
+    'UPDATE users SET balance_cents = balance_cents + $1 WHERE id = $2 RETURNING balance_cents',
+    [cents, userId]
+  );
+  return result.rows[0]?.balance_cents ?? 0;
+}
+
+async function drainUserBalanceToCard(userId, cardId) {
+  const user = await pool.query('SELECT balance_cents FROM users WHERE id = $1', [userId]);
+  const amount = user.rows[0]?.balance_cents ?? 0;
+  if (amount <= 0) return 0;
+  await pool.query('UPDATE users SET balance_cents = 0 WHERE id = $1', [userId]);
+  await pool.query('UPDATE cards SET balance_cents = balance_cents + $1 WHERE id = $2', [amount, cardId]);
+  return amount;
 }
 
 async function creditBalance(cardId, cents) {
@@ -186,4 +204,4 @@ async function findRegistrationToken(token) {
   return result.rows[0];
 }
 
-module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken, findUserByTelegramId, deductBalance, creditBalance, getOrCreateReferralCode, getUserByReferralCode, getReferralCount, setReferredBy, getLatestCard, getReferrer };
+module.exports = { initDb, findOrCreateUser, saveCard, getUserCards, getAllUsers, createRegistrationToken, findRegistrationToken, findUserByTelegramId, deductBalance, creditBalance, creditUserBalance, drainUserBalanceToCard, getOrCreateReferralCode, getUserByReferralCode, getReferralCount, setReferredBy, getLatestCard, getReferrer };

@@ -189,20 +189,14 @@ app.post('/api/register', async (req, res) => {
         if (!alreadyReferred) {
           await pool.query('UPDATE users SET referred_by = $1 WHERE id = $2', [referrerUser.id, newUser.id]);
 
-          const latestCard = await pool.query(
-            'SELECT * FROM cards WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+          await pool.query(
+            'UPDATE users SET balance_cents = balance_cents + 500 WHERE id = $1',
             [referrerUser.id]
           );
-          if (latestCard.rows[0]) {
-            await pool.query(
-              'UPDATE cards SET balance_cents = balance_cents + 500 WHERE id = $1',
-              [latestCard.rows[0].id]
-            );
-          }
 
           bot.telegram.sendMessage(
             referrerUser.telegram_id,
-            `🎉 Ваш реферал ${fullName} зарегистрировался! Вам начислено $5.00 на карту.`
+            `🎉 Ваш реферал ${fullName} зарегистрировался! Вам начислено $5.00 на общий баланс. Выпустите карту командой /getcard — баланс автоматически перейдёт на неё.`
           ).catch(() => {});
         }
       }
